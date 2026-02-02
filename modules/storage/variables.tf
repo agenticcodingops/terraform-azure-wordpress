@@ -2,12 +2,12 @@
 # Layer 2 Application - Blob Storage for Media Uploads
 
 variable "project_name" {
-  description = "Project name used in resource naming (lowercase, 2-12 chars)"
+  description = "Project name used in resource naming (lowercase, 2-24 chars)"
   type        = string
 
   validation {
-    condition     = can(regex("^[a-z][a-z0-9-]{0,10}[a-z0-9]$", var.project_name))
-    error_message = "Project name must be 2-12 lowercase alphanumeric characters with optional hyphens."
+    condition     = can(regex("^[a-z][a-z0-9-]{0,22}[a-z0-9]$", var.project_name))
+    error_message = "Project name must be 2-24 lowercase alphanumeric characters with optional hyphens."
   }
 }
 
