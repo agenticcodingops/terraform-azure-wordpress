@@ -7,7 +7,7 @@ locals {
   env_suffix = var.environment == "nonprod" ? "np" : "prod"
 
   # Resource naming following convention
-  name_prefix = "trackroutinely-${var.site_name}-${local.env_suffix}"
+  name_prefix = "${var.project_name}-${var.site_name}-${local.env_suffix}"
 
   # Use provided plan or create new
   # IMPORTANT: use_shared_plan must be explicitly set when using a shared plan

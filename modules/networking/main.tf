@@ -7,7 +7,7 @@ locals {
   env_suffix = var.environment == "nonprod" ? "np" : "prod"
 
   # Resource naming following convention: {type}-{project}-{site}-{env}
-  name_prefix = "trackroutinely-${var.site_name}-${local.env_suffix}"
+  name_prefix = "${var.project_name}-${var.site_name}-${local.env_suffix}"
 }
 
 # Virtual Network - isolated per site

@@ -6,7 +6,7 @@ locals {
   env_suffix = var.environment == "nonprod" ? "np" : "prod"
 
   # Resource naming
-  name_prefix = "trackroutinely-${var.site_name}-${local.env_suffix}"
+  name_prefix = "${var.project_name}-${var.site_name}-${local.env_suffix}"
 
   # Create workspace if not provided
   create_workspace = var.log_analytics_workspace_id == null

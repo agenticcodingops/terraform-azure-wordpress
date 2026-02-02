@@ -7,7 +7,7 @@ locals {
   env_suffix = var.environment == "nonprod" ? "np" : "prod"
 
   # Resource naming
-  name_prefix = "trackroutinely-${var.site_name}-${local.env_suffix}"
+  name_prefix = "${var.project_name}-${var.site_name}-${local.env_suffix}"
 
   # Endpoint naming (must be globally unique)
   endpoint_name = "${var.site_name}-${local.env_suffix}"

@@ -1,5 +1,15 @@
 # Shared Infrastructure Module Variables
 
+variable "project_name" {
+  description = "Project name used in resource naming (lowercase, 2-12 chars)"
+  type        = string
+
+  validation {
+    condition     = can(regex("^[a-z][a-z0-9-]{0,10}[a-z0-9]$", var.project_name))
+    error_message = "Project name must be 2-12 lowercase alphanumeric characters with optional hyphens."
+  }
+}
+
 variable "environment" {
   description = "Environment name (nonprod or production)"
   type        = string

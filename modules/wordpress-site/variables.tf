@@ -1,6 +1,16 @@
 # WordPress Site Composition Variables
 # Orchestrates Layer 1 → Layer 2 modules for a complete WordPress site
 
+variable "project_name" {
+  description = "Project name used in resource naming (lowercase, 2-12 chars)"
+  type        = string
+
+  validation {
+    condition     = can(regex("^[a-z][a-z0-9-]{0,10}[a-z0-9]$", var.project_name))
+    error_message = "Project name must be 2-12 lowercase alphanumeric characters with optional hyphens."
+  }
+}
+
 variable "site_name" {
   description = "Site name used for resource naming (lowercase, hyphens only)"
   type        = string

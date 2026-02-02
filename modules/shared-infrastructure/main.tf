@@ -8,8 +8,9 @@
 #
 # Usage:
 #   module "shared_infrastructure" {
-#     source = "../../modules/shared-infrastructure"
+#     source = "github.com/agenticcodingops/terraform-azure-wordpress//modules/shared-infrastructure?ref=v1.0.0"
 #
+#     project_name       = "myproject"
 #     environment        = "nonprod"
 #     location           = "West US 2"
 #     app_service_sku    = "B1"
@@ -32,7 +33,7 @@ locals {
   env_suffix = var.environment == "nonprod" ? "np" : "prod"
 
   # Resource naming following project convention
-  name_prefix = "trackroutinely-shared-${local.env_suffix}"
+  name_prefix = "${var.project_name}-shared-${local.env_suffix}"
 }
 
 # Shared Resource Group

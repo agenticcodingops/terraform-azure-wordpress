@@ -43,7 +43,7 @@ locals {
   env_suffix = var.environment == "nonprod" ? "np" : "prod"
 
   # Resource naming prefix
-  name_prefix = "trackroutinely-${var.site_name}-${local.env_suffix}"
+  name_prefix = "${var.project_name}-${var.site_name}-${local.env_suffix}"
 
   # Common tags
   # Environment uses FinOps-compliant values: Dev, Stage, Prod
@@ -54,7 +54,7 @@ locals {
     Site        = var.site_name
     Service     = "WordPress"
     ManagedBy   = "terraform"
-    Project     = "trackroutinely"
+    Project     = var.project_name
   })
 
   # Database defaults with environment-aware settings
@@ -134,7 +134,7 @@ locals {
 
 # Resource Group for this site
 resource "azurerm_resource_group" "main" {
-  name     = "rg-trackroutinely-${var.site_name}-${local.env_suffix}"
+  name     = "rg-${var.project_name}-${var.site_name}-${local.env_suffix}"
   location = var.location
   tags     = local.common_tags
 }
@@ -153,8 +153,9 @@ resource "random_password" "db" {
 
 # Networking Module
 module "networking" {
-  source = "../../modules/layer-1-foundation/networking"
+  source = "../networking"
 
+  project_name        = var.project_name
   site_name           = var.site_name
   environment         = var.environment
   location            = var.location
@@ -170,8 +171,9 @@ module "networking" {
 
 # DNS Zones Module
 module "dns_zones" {
-  source = "../../modules/layer-1-foundation/dns-zones"
+  source = "../dns-zones"
 
+  project_name        = var.project_name
   site_name           = var.site_name
   resource_group_name = azurerm_resource_group.main.name
   vnet_id             = module.networking.vnet_id
@@ -221,8 +223,9 @@ resource "azurerm_application_insights" "main" {
 
 # Database Module
 module "database" {
-  source = "../../modules/layer-2-application/database"
+  source = "../database"
 
+  project_name        = var.project_name
   site_name           = var.site_name
   environment         = var.environment
   location            = var.location
@@ -255,8 +258,9 @@ module "database" {
 
 # Storage Module
 module "storage" {
-  source = "../../modules/layer-2-application/storage"
+  source = "../storage"
 
+  project_name        = var.project_name
   site_name           = var.site_name
   environment         = var.environment
   location            = var.location
@@ -272,8 +276,9 @@ module "storage" {
 # Created BEFORE app_service - uses placeholder for principal_id
 # Access policy is added later after app_service creates its managed identity
 module "key_vault" {
-  source = "../../modules/layer-2-application/key-vault"
+  source = "../key-vault"
 
+  project_name        = var.project_name
   site_name           = var.site_name
   environment         = var.environment
   location            = var.location
@@ -304,8 +309,9 @@ module "key_vault" {
 # NOTE: When using shared plan, App Service is in the shared resource group
 # This is required because Azure mandates App Service and Plan be in same resource group
 module "app_service" {
-  source = "../../modules/layer-2-application/app-service"
+  source = "../app-service"
 
+  project_name        = var.project_name
   site_name           = var.site_name
   environment         = var.environment
   location            = var.location
@@ -561,8 +567,9 @@ resource "azurerm_monitor_metric_alert" "response_time" {
 # Front Door Module (conditional)
 module "front_door" {
   count  = local.fd_config.enabled ? 1 : 0
-  source = "../../modules/layer-2-application/front-door"
+  source = "../front-door"
 
+  project_name        = var.project_name
   site_name           = var.site_name
   environment         = var.environment
   resource_group_name = azurerm_resource_group.main.name
@@ -663,7 +670,7 @@ resource "azapi_update_resource" "app_service_front_door_restriction" {
 
 module "cloudflare" {
   count  = local.cf_config.enabled ? 1 : 0
-  source = "../../modules/cloudflare"
+  source = "../cloudflare"
 
   cloudflare_account_id = local.cf_config.account_id
   domain                = local.cf_config.domain
