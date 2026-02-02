@@ -15,35 +15,112 @@ Deploy production-ready WordPress sites on Azure with Cloudflare CDN using Terra
 
 ## Architecture
 
+### Infrastructure Overview
+
+```mermaid
+flowchart TB
+    subgraph Internet["🌐 Internet"]
+        Users[("👥 Users")]
+    end
+
+    subgraph Cloudflare["☁️ Cloudflare Edge"]
+        CF_CDN["CDN Cache"]
+        CF_WAF["WAF Protection"]
+        CF_SSL["Universal SSL"]
+        CF_DNS["DNS Management"]
+    end
+
+    subgraph Azure["☁️ Azure Region"]
+        subgraph SharedRG["📦 Shared Resource Group"]
+            ASP["App Service Plan\n(B1/P1v3)"]
+            subgraph Sites["WordPress Sites"]
+                Site1["🌐 Site 1"]
+                Site2["🌐 Site 2"]
+                SiteN["🌐 Site N"]
+            end
+        end
+
+        subgraph SiteRG["📦 Per-Site Resources"]
+            MySQL[("🗄️ MySQL\nPrivate Endpoint")]
+            Storage[("📁 Blob Storage\nMedia Files")]
+            KV["🔐 Key Vault\nSecrets"]
+            AppInsights["📊 App Insights"]
+        end
+
+        subgraph Network["🔒 Private Network"]
+            VNet["Virtual Network"]
+            PrivateDNS["Private DNS Zone"]
+        end
+    end
+
+    Users --> CF_CDN
+    CF_CDN --> CF_WAF --> CF_SSL
+    CF_SSL --> Site1 & Site2 & SiteN
+    Site1 & Site2 & SiteN --> ASP
+    Site1 --> MySQL & Storage & KV
+    MySQL -.-> VNet
+    VNet -.-> PrivateDNS
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│                        Cloudflare Edge                           │
-│  ┌────────────────────────────────────────────────────────────┐  │
-│  │  CDN + WAF + SSL + DDoS Protection                         │  │
-│  └────────────────────────────────────────────────────────────┘  │
-└────────────────────────────────────────────────────────────────┘
-                              │
-┌─────────────────────────────┴────────────────────────────────────┐
-│                        Azure Region                              │
-│  ┌────────────────────────────────────────────────────────────┐  │
-│  │           Shared Resource Group (per environment)          │  │
-│  │  ┌──────────────────────────────────────────────────────┐  │  │
-│  │  │            Shared App Service Plan                   │  │  │
-│  │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  │  │  │
-│  │  │  │   Site 1    │  │   Site 2    │  │   Site N    │  │  │  │
-│  │  │  │  WordPress  │  │  WordPress  │  │  WordPress  │  │  │  │
-│  │  │  └─────────────┘  └─────────────┘  └─────────────┘  │  │  │
-│  │  └──────────────────────────────────────────────────────┘  │  │
-│  └────────────────────────────────────────────────────────────┘  │
-│                                                                  │
-│  ┌────────────────────────────────────────────────────────────┐  │
-│  │           Per-Site Resources                               │  │
-│  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐   │  │
-│  │  │ MySQL Server │ │ Blob Storage │ │     Key Vault    │   │  │
-│  │  │   (Private)  │ │   (Media)    │ │    (Secrets)     │   │  │
-│  │  └──────────────┘ └──────────────┘ └──────────────────────┘  │
-│  └────────────────────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────────────────────┘
+
+### Module Dependency Flow
+
+```mermaid
+flowchart LR
+    subgraph Layer1["Layer 1: Foundation"]
+        NET["networking"]
+        DNS["dns-zones"]
+    end
+
+    subgraph Layer2["Layer 2: Application"]
+        DB["database"]
+        STOR["storage"]
+        KV["key-vault"]
+        APP["app-service"]
+        MON["monitoring"]
+        FD["front-door"]
+    end
+
+    subgraph External["External"]
+        CF["cloudflare"]
+    end
+
+    NET --> DNS
+    DNS --> DB
+    NET --> APP
+    STOR --> KV
+    KV --> APP
+    DB --> APP
+    APP --> MON
+    APP --> FD
+    APP --> CF
+```
+
+### Request Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Cloudflare as Cloudflare CDN
+    participant AppService as Azure App Service
+    participant MySQL as MySQL (Private)
+    participant Blob as Blob Storage
+
+    User->>Cloudflare: HTTPS Request
+    Cloudflare->>Cloudflare: WAF Check
+    Cloudflare->>Cloudflare: Cache Check
+
+    alt Cache Hit
+        Cloudflare-->>User: Cached Response
+    else Cache Miss
+        Cloudflare->>AppService: Forward Request
+        AppService->>MySQL: Query (Private Endpoint)
+        MySQL-->>AppService: Data
+        AppService->>Blob: Fetch Media (if needed)
+        Blob-->>AppService: Media Files
+        AppService-->>Cloudflare: Response
+        Cloudflare->>Cloudflare: Cache Response
+        Cloudflare-->>User: Response
+    end
 ```
 
 ## Quick Start
@@ -94,6 +171,54 @@ See [examples/](examples/) for complete configurations.
 | [cloudflare](modules/cloudflare/) | Cloudflare DNS and CDN |
 | [front-door](modules/front-door/) | Azure Front Door CDN + WAF |
 | [monitoring](modules/monitoring/) | Application Insights and alerts |
+
+### Module Composition
+
+```mermaid
+flowchart TB
+    subgraph User["Your Terraform Config"]
+        MAIN["main.tf"]
+    end
+
+    subgraph Shared["shared-infrastructure"]
+        ASP["App Service Plan"]
+        RG_S["Resource Group"]
+    end
+
+    subgraph WPSite["wordpress-site (composition)"]
+        RG["Resource Group"]
+
+        subgraph L1["Layer 1: Foundation"]
+            NET["networking\n• VNet\n• Subnets\n• NSGs"]
+            DNS["dns-zones\n• Private DNS\n• VNet Links"]
+        end
+
+        subgraph L2["Layer 2: Application"]
+            DB["database\n• MySQL Flexible\n• Private Endpoint"]
+            STOR["storage\n• Blob Container\n• Media Files"]
+            KV["key-vault\n• Secrets\n• Access Policies"]
+            APP["app-service\n• Linux Web App\n• Managed Identity"]
+            MON["monitoring\n• App Insights\n• Alerts"]
+            FD["front-door\n• CDN\n• WAF"]
+        end
+
+        CF["cloudflare\n• DNS Records\n• Proxy Settings"]
+    end
+
+    MAIN --> Shared
+    MAIN --> WPSite
+    Shared --> |"plan_id"| APP
+    RG --> L1
+    L1 --> L2
+    NET --> DNS
+    DNS --> DB
+    STOR --> KV
+    KV --> APP
+    DB --> APP
+    APP --> MON
+    APP --> FD
+    APP --> CF
+```
 
 ## CDN Options
 
